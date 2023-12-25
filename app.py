@@ -1,43 +1,68 @@
 import streamlit as st
-import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
-def detect_emotions(heart_rate, spo2, calories_burnt, num_steps):
-    emotions = ['Anger', 'Fear', 'Sadness', 'Disgust', 'Surprise', 'Anticipation', 'Trust', 'Joy']
-    emotion_probabilities = np.random.rand(8)
-    
-    total_prob = sum(emotion_probabilities)
-    emotion_percentages = [prob / total_prob * 100 for prob in emotion_probabilities]
+# Sample data for demonstration
+data = {
+    'Number of Steps': [5000, 10000, 15000, 20000],
+    'spO2 Levels': [95, 97, 98, 99],
+    'Heart Rate': [70, 80, 90, 100],
+    'Calories Burnt': [200, 400, 600, 800],
+    'Emotion_Anger': [10, 20, 30, 40],
+    'Emotion_Anticipation': [5, 15, 25, 35],
+    'Emotion_Joy': [30, 40, 50, 60],
+    'Emotion_Trust': [50, 60, 70, 80],
+    'Emotion_Fear': [15, 25, 35, 45],
+    'Emotion_Surprise': [20, 30, 40, 50],
+    'Emotion_Sadness': [25, 35, 45, 55],
+    'Emotion_Disgust': [10, 20, 30, 40]
+}
 
-    final_output = emotions[np.argmax(emotion_probabilities)]
+df = pd.DataFrame(data)
 
-    return emotions, emotion_percentages, final_output
+# Preprocess the data
+X = df[['Number of Steps', 'spO2 Levels', 'Heart Rate', 'Calories Burnt']]
+y = df[['Emotion_Sadness', 'Emotion_Anticipation', 'Emotion_Joy', 'Emotion_Trust',
+        'Emotion_Fear', 'Emotion_Surprise', 'Emotion_Sadness', 'Emotion_Disgust']]
 
-def main():
-    st.title("Emotion and Mental Health Analysis")
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
 
-    num_steps = st.slider("Number of Steps", min_value=0, max_value=10000, value=5000)
-    heart_rate = st.slider("Heart Rate", min_value=60, max_value=180, value=80)
-    spo2 = st.slider("SpO2", min_value=90, max_value=100, value=95)
-    calories_burnt = st.slider("Calories Burnt", min_value=0, max_value=1000, value=500)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-    if st.button("Detect Emotions"):
-        emotions, emotion_percentages, final_output = detect_emotions(heart_rate, spo2, calories_burnt, num_steps)
+# Train a simple RandomForestClassifier for demonstration
+clf = RandomForestClassifier()
+clf.fit(X_train, y_train)
 
-        st.subheader("Emotion Percentages:")
-        for emotion, percentage in zip(emotions, emotion_percentages):
-            st.write(f"{emotion}: {percentage:.2f}%")
+# Streamlit UI
+st.title('Emotion Prediction App')
 
-        st.subheader("Final Output:")
-        st.success(f"The primary emotion detected is: {final_output}")
+# User input
+steps = st.slider('Number of Steps taken:', min_value=0, max_value=30000, value=15000)
+spo2 = st.slider('spO2 levels:', min_value=90, max_value=100, value=95)
+heart_rate = st.slider('Heart Rate:', min_value=60, max_value=120, value=80)
+calories_burnt = st.slider('Calories Burnt:', min_value=0, max_value=1000, value=500)
 
-        if final_output in ['Anger', 'Fear', 'Sadness', 'Disgust']:
-            st.warning("Warning: The detected emotion may indicate stress or negative mental state.")
-        elif final_output in ['Anxiety']:
-            st.warning("Warning: The detected emotion may indicate anxiety.")
-        elif final_output in ['Depression']:
-            st.warning("Warning: The detected emotion may indicate depression.")
-        else:
-            st.success("No immediate concerns detected.")
+# Predict emotion percentages
+input_data = scaler.transform([[steps, spo2, heart_rate, calories_burnt]])
+emotion_percentages = clf.predict_proba(input_data)[0]
 
-if __name__ == "__main__":
-    main()
+# Display emotion percentages
+st.write('Emotion Percentages:')
+for i, emotion in enumerate(['Anger', 'Anticipation', 'Joy', 'Trust', 'Fear', 'Surprise', 'Sadness', 'Disgust']):
+    st.write(f'{emotion}: {emotion_percentages[i]:.2f}%')
+
+# Predict mental health condition
+st.title('Mental Health Prediction')
+mental_health_prediction = clf.predict(input_data)[0]
+
+if mental_health_prediction == 1:
+    st.warning('Possible Sadness')
+elif mental_health_prediction == 2:
+    st.error('Possible Anxiety')
+elif mental_health_prediction == 3:
+    st.error('Possible Depression')
+else:
+    st.success('No specific mental health condition predicted')
